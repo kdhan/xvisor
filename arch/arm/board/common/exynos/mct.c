@@ -280,16 +280,28 @@ int __init exynos4_clockchip_init(virtual_addr_t base, u32 hirq,
 	mct_comp_device.set_next_event = exynos4_comp_set_next_event;
 	mct_comp_device.priv = NULL;
 
+	vmm_printf("Initialize Clockchip Manager  %d\n", hirq);
+	vmm_printf("Initialize Clockchip Manager 000 %d\n", EXYNOS5_IRQ_MCT_G0);
 	/* Register interrupt handler */
 	if ((rc =
+/* by kordo */
+#if 1		
+	     vmm_host_irq_register(EXYNOS5_IRQ_MCT_G0, name, exynos4_mct_comp_isr,
+#else		 
 	     vmm_host_irq_register(hirq, name, exynos4_mct_comp_isr,
+#endif		 
 				   &mct_comp_device))) {
 		return rc;
 	}
 #ifdef CONFIG_SMP
 	/* Set host irq affinity to target cpu */
 	if ((rc =
+/* by kordo */
+#if 1
+	     vmm_host_irq_set_affinity(EXYNOS5_IRQ_MCT_G0, vmm_cpumask_of(target_cpu),
+#else		 
 	     vmm_host_irq_set_affinity(hirq, vmm_cpumask_of(target_cpu),
+#endif		 
 				       TRUE))) {
 		return rc;
 	}
@@ -464,16 +476,36 @@ int __cpuinit exynos4_local_timer_init(virtual_addr_t timer_base, u32 hirq,
 
 	if (mct_int_type == MCT_INT_SPI) {
 		if (cpu == 0) {
+/* by kordo */				   
+#if 1				   
+			vmm_host_irq_register(EXYNOS5_IRQ_MCT_L0,
+#else			
 			vmm_host_irq_register(EXYNOS4_IRQ_MCT_L0,
+#endif			
 					      "mct_tick0_irq",
 					      exynos4_mct_tick_isr, mevt);
+/* by kordo */				   
+#if 1				   
+			vmm_host_irq_set_affinity(EXYNOS5_IRQ_MCT_L0,
+#else			
 			vmm_host_irq_set_affinity(EXYNOS4_IRQ_MCT_L0,
+#endif			
 						  vmm_cpumask_of(cpu), TRUE);
 		} else {
+/* by kordo */				   
+#if 1				   
+			vmm_host_irq_register(EXYNOS5_IRQ_MCT_L1,
+#else			
 			vmm_host_irq_register(EXYNOS4_IRQ_MCT_L1,
+#endif			
 					      "mct_tick1_irq",
 					      exynos4_mct_tick_isr, mevt);
+/* by kordo */				   
+#if 1				   
+			vmm_host_irq_set_affinity(EXYNOS5_IRQ_MCT_L1,
+#else			
 			vmm_host_irq_set_affinity(EXYNOS4_IRQ_MCT_L1,
+#endif			
 						  vmm_cpumask_of(cpu), TRUE);
 		}
 	} else {
@@ -489,7 +521,9 @@ int __cpuinit exynos4_local_timer_init(virtual_addr_t timer_base, u32 hirq,
 
 void __init exynos4_timer_init(void)
 {
+	vmm_printf("%s [%d] exynos5250 [%d] \n", __func__, __LINE__, soc_is_exynos5250());
 	if ((soc_is_exynos4210()) || (soc_is_exynos5250())) {
+		vmm_printf("%s [%d] exynos5250\n", __func__, __LINE__);
 		mct_int_type = MCT_INT_SPI;
 	} else {
 		mct_int_type = MCT_INT_PPI;

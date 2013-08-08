@@ -5,13 +5,13 @@
 	model = "odroidx";
 
 	chosen {
-		console = &SERIAL1;
+		console = &SERIAL2;
 		rtcdev = &RTC0;
 	};
 
 	memory {
 		device_type = "memory"; 
-		reg = <0x40000000 0x40000000>; /* 1 GB */
+		reg = <0x40000000 0x80000000>; /* 1 GB */
 	};
 
 	vmm {

@@ -26,6 +26,64 @@
  */
 
 #include <cpu_defines.h>
+/* magicyaba for uart */	
+#if 1
+#include "include/exynos4210-uart.h"
+
+#define PRINT(_s)       \
+        adr   r0, 98f ; \
+        bl    puts    ; \
+        b     99f     ; \
+98:     .asciz _s     ; \
+        .align 2      ; \
+99:
+
+
+.macro early_uart_init rb rc rd
+        /* init clock */
+	ldr	\rc, =0x10020000
+        ldr   \rd, [\rc, #0x250]
+        and	\rd, \rd, #(~(0xf<<8))
+        orr	\rd, \rd, #(0x6<<8)
+        str   \rd, [\rc, #0x250]
+        /* ratio 800/(7+1) */
+        ldr   \rd, [\rc, #0x558]
+        and   \rd, \rd, #(~(0xf<<8))
+        orr   \rd, \rd, #(0x7<<8)
+        str   \rd, [\rc, #0x558]
+
+        mov   \rc, #(100000000 / 115200 % 16)
+        str   \rc, [\rb, #UFRACVAL]  
+        mov   \rc, #(100000000 / 115200 / 16 - 1)
+        str   \rc, [\rb, #UBRDIV]  
+        mov   \rc, #3             
+        str   \rc, [\rb, #ULCON]  
+        ldr   \rc, =UCON_TX_IRQ  
+        str   \rc, [\rb, #UCON] 
+        mov   \rc, #0x0
+        str   \rc, [\rb, #UFCON]
+        mov   \rc, #0x0
+        str   \rc, [\rb, #UMCON] 
+.endm
+
+/* Exynos 5 UART wait UART to be ready to transmit
+ * rb: register which contains the UART base address
+ * rc: scratch register */
+.macro early_uart_ready rb rc
+1:
+        ldr   \rc, [\rb, #UTRSTAT]   /* <- UTRSTAT (Flag register) */
+        tst   \rc, #UTRSTAT_TX_EMPTY /* Check BUSY bit */
+        beq   1b                     /* Wait for the UART to be ready */
+.endm
+
+/* Exynos 5 UART transmit character
+ * rb: register which contains the UART base address
+ * rt: register which contains the character to transmit */
+.macro early_uart_transmit rb rt
+        str   \rt, [\rb, #UTXH]      /* -> UTXH (Data Register) */
+.endm
+
+#endif
 
 	/* 
 	 * _start: Primary CPU startup code
@@ -266,6 +324,18 @@ _start_secondary:
 	/* Setup Domain Control Register */
 	ldr	r1, __dacr_mmu_val
 	mcr	p15, 0, r1, c3, c0, 0
+
+/* magicyaba for uart */	
+#if 1
+	@ldr	r12, =0
+	@ldr	r11, =0x12c00000
+	@teq	r12, #0
+	@bleq	init_uart
+	@PRINT("-CPU ")
+	@mov	r0, r12
+	@bl	putn
+	@PRINT("-CPU ")
+#endif
 
 	/* Setup System Control Register */
 	bl	proc_setup
@@ -540,10 +610,81 @@ _reset:
 #endif
 	/* Set to Supervisor Mode */
 	CMODE	r8, CPSR_MODE_SUPERVISOR
+/* magicyaba for uart */	
+#if 1
+
+	@ldr	r11, =0x12c00000
+	@teq	r12, #0
+	@bleq	init_uart
+	@PRINT("-CPU ")
+	@mov	r0, r12
+	@bl	putn
+	@PRINT("-CPU ")
+#endif
+
 	/* Call CPU init function */
 	b	cpu_init
 	/* We should never reach here */
 	b	.
+
+/* magicyaba for uart */	
+#if 1
+.globl early_putch
+/* Print a character on the UART - this function is called by C
+ * r0: character to print */
+early_putch:
+        ldr   r1, =0x12c20000  /* r1 := VA UART base address */
+        early_uart_ready r1, r2
+        early_uart_transmit r1, r0
+        mov   pc, lr
+
+.globl early_flush
+/* Flush the UART - this function is called by C */
+early_flush:
+        ldr   r1, =0x12c20000  /* r1 := VA UART base address */
+        early_uart_ready r1, r2
+        mov   pc, lr
+
+init_uart:
+	early_uart_init	r11, r1, r2
+	adr	r0, 1f
+	b	puts
+1:
+	.asciz	"- UART Enabled -\r\n"
+	.align 4	
+
+/* Print early debug messages.
+ * r0: Nul-terminated string to print.
+ * r11: Early UART base address
+ * Clobbers r0-r1 */
+puts:
+        early_uart_ready r11, r1
+        ldrb  r1, [r0], #1           /* Load next char */
+        teq   r1, #0                 /* Exit on nul */
+        moveq pc, lr
+        early_uart_transmit r11, r1
+        b puts
+
+/* Print a 32-bit number in hex.  Specific to the PL011 UART.
+ * r0: Number to print.
+ * r11: Early UART base address
+ * Clobbers r0-r3 */
+putn:
+        adr   r1, hex
+        mov   r3, #8
+1:
+        early_uart_ready r11, r2
+        and   r2, r0, #0xf0000000    /* Mask off the top nybble */
+        ldrb  r2, [r1, r2, lsr #28]  /* Convert to a char */
+        early_uart_transmit r11, r2
+        lsl   r0, #4                 /* Roll it through one nybble at a time */
+        subs  r3, r3, #1
+        bne   1b
+        mov   pc, lr
+
+hex:    .ascii "0123456789abcdef"
+        .align 2
+#endif		
 
 	/*
 	 * Helper Macros for Exception Handlers

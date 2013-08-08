@@ -23,7 +23,13 @@
 #ifndef __GIC_CONFIG_H__
 #define __GIC_CONFIG_H__
 
+// by kordo 
+#if 1
+#define GIC_NR_IRQS		520
+#else
 #define GIC_NR_IRQS		256
+#endif
+
 #if defined(CONFIG_CPU_CORTEX_A9)
 #define GIC_IRQ_START		29
 #else

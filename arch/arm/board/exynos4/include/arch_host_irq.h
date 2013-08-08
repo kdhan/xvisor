@@ -25,6 +25,10 @@
 
 #include <vmm_types.h>
 #include <gic.h>
+/* by kordo */
+#if 1
+#include <combiner.h>
+#endif
 
 #define ARCH_HOST_IRQ_COUNT			GIC_NR_IRQS
 
@@ -53,6 +57,16 @@ static inline int arch_host_irq_init(void)
 		gic_secondary_init(0);
 		rc = VMM_OK;
 	}
+
+#if 1
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+				   "combiner");
+	if (!node) {
+		return VMM_ENODEV;
+	}
+
+	rc = combiner_devtree_init(node, NULL);
+#endif
 
 	return rc;
 }
