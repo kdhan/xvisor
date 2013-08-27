@@ -1,0 +1,14 @@
+1. Configure Xvisor with ODroid-X host default settings
+# make ARCH=arm CROSS_COMPILE=arm-none-eabi- exynos5250-arndale-defconfig
+
+2. Build Xvisor
+# make ARCH=arm CROSS_COMPILE=arm-none-eabi-
+
+3. Build Basic Firmware
+# make -C tests/arm32/vexpress-a15/basic
+
+4. Create fast_model_boot.axf for running it on ARM Fast Models
+# ./tools/scripts/memimg.py -a 0x80010000 -o build/fast_model_boot.img build/vmm.bin@0x80010000 build/tests/arm32/vexpress-a15/basic/firmware.bin@0x81000000
+
+# cd build; arm-none-eabi-gcc -nostdlib -march=armv7-a -mcpu=cortex-a15 -e start_boot -Wl,-Ttext=0x80000000 -DSPIN_LOOP_ADDR=0x44000000 -DIMAGE=fast_model_boot.img -DSMP -DARNDALE -DGIC_DIST_NONSECURED ../docs/arm/fast_model_boot.S -o fast_model_boot.axf; cd ..
+
