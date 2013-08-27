@@ -31,20 +31,20 @@
 
 	memory {
 		device_type = "memory"; 
-		reg = <0x0 0x80000000 0x0 0x10000000>; /* 256 MB */
+		reg = <0x0 0x40000000 0x0 0x80000000>; /* 256 MB */
 	};
 
 	gic { /* Generic Interrupt Controller */
       		device_type = "pic";
       		compatible = "arm,cortex-a15-gic", "arm,cortex-a9-gic";
-      		reg = <0x0 0x2C001000 0x0 0x1000   /* Dist Interface */
-		       0x0 0x2C002000 0x0 0x1000   /* CPU Interface */
-		       0x0 0x2C004000 0x0 0x2000   /* VCPU Control Interface */
-		       0x0 0x2C006000 0x0 0x2000>; /* VCPU Interface */
+      		reg = <0x0 0x10481000 0x0 0x1000   /* Dist Interface */
+		       0x0 0x10482000 0x0 0x1000   /* CPU Interface */
+		       0x0 0x10484000 0x0 0x2000   /* VCPU Control Interface */
+		       0x0 0x10486000 0x0 0x2000>; /* VCPU Interface */
 		irq_start = <16>;
 		interrupts = <25>; /* VGIC Maintanence IRQ */
 	};
-
+	
 	gen-timer { /* Generic Timer */
       		device_type = "timer";
       		compatible = "arm,armv7-timer";
@@ -102,14 +102,41 @@
 				interrupts = <45>;
 			};
 
-			SERIAL0: uart0 {
-		      		device_type = "serial";
-		      		compatible = "arm,pl011";
-		      		reg = <0x1C090000 0x1000>;
-				clock-frequency = <24000000>;
-		      		baudrate = <115200>;
-				interrupts = <37>;
-			};
+		SERIAL0: uart0 {
+			device_type = "serial";
+			compatible = "samsung,exynos4210-uart";
+			reg = <0x12C00000 0x100>;
+			clock-frequency = <100000000>;
+			baudrate = <115200>;
+			interrupts = <83>;
+		};
+
+		SERIAL1: uart.1 {
+			device_type = "serial";
+			compatible = "samsung,exynos4210-uart";
+			reg = <0x12C10000 0x100>;
+			clock-frequency = <100000000>;
+			baudrate = <115200>;
+			interrupts = <84>;
+		};
+
+		SERIAL2: uart.2 {
+			device_type = "serial";
+			compatible = "samsung,exynos4210-uart";
+			reg = <0x12C20000 0x100>;
+			clock-frequency = <100000000>;
+			baudrate = <115200>;
+			interrupts = <85>;
+		};
+
+		SERIAL3: uart.3 {
+			device_type = "serial";
+			compatible = "samsung,exynos4210-uart";
+			reg = <0x12C30000 0x100>;
+			clock-frequency = <100000000>;
+			baudrate = <115200>;
+			interrupts = <86>;
+		};
 
 			timer01 {
 		      		device_type = "timer";

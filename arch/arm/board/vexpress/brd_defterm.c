@@ -26,7 +26,13 @@
 #include <vmm_compiler.h>
 #include <vmm_devtree.h>
 #include <vmm_host_aspace.h>
+
+/* for samsung uart by kordo */
+#if 1
+#include <drv/samsung-uart.h>
+#else
 #include <drv/pl011.h>
+#endif
 
 static virtual_addr_t v2m_defterm_base;
 static u32 v2m_defterm_inclk;
@@ -34,19 +40,40 @@ static u32 v2m_defterm_baud;
 
 int arch_defterm_putc(u8 ch)
 {
+/* for samsung uart by kordo */
+#if 1
+	if (!samsung_lowlevel_can_putc(v2m_defterm_base)) {
+#else
 	if (!pl011_lowlevel_can_putc(v2m_defterm_base)) {
+#endif
 		return VMM_EFAIL;
 	}
+
+/* for samsung uart by kordo */
+#if 1
+	samsung_lowlevel_putc(v2m_defterm_base, ch);
+#else
 	pl011_lowlevel_putc(v2m_defterm_base, ch);
+#endif
 	return VMM_OK;
 }
 
 int arch_defterm_getc(u8 * ch)
 {
+/* for samsung uart by kordo */
+#if 1
+	if (!samsung_lowlevel_can_getc(v2m_defterm_base)) {
+#else
 	if (!pl011_lowlevel_can_getc(v2m_defterm_base)) {
+#endif
 		return VMM_EFAIL;
 	}
+/* for samsung uart by kordo */
+#if 1
+	*ch = samsung_lowlevel_getc(v2m_defterm_base);
+#else
 	*ch = pl011_lowlevel_getc(v2m_defterm_base);
+#endif
 	return VMM_OK;
 }
 
@@ -86,8 +113,15 @@ int __init arch_defterm_init(void)
 	val = vmm_devtree_attrval(node, "baudrate");
 	v2m_defterm_baud = (val) ? *val : 115200;
 
+/* for samsung uart by kordo */
+#if 1
+	/* initialize the console port */
+	samsung_lowlevel_init(v2m_defterm_base,
+			      v2m_defterm_baud, v2m_defterm_inclk);
+#else
 	pl011_lowlevel_init(v2m_defterm_base,
 			    v2m_defterm_baud, 
 			    v2m_defterm_inclk);
+#endif
 	return VMM_OK;
 }
