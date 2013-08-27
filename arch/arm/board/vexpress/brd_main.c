@@ -41,6 +41,13 @@
 #include <smp_twd.h>
 #include <generic_timer.h>
 
+/* porting mct timer and generic timer by kordo */
+#if 1
+#include <exynos/plat/cpu.h>
+#include <exynos/mach/map.h>
+#include <exynos/mct_timer.h>
+#endif
+
 /*
  * Global board context
  */
@@ -233,6 +240,20 @@ void arch_board_print_info(struct vmm_chardev *cdev)
 
 int __init arch_board_early_init(void)
 {
+/* init arndale board by kordo */
+#if 1
+	/* Initalize some code that will help determine the SOC type */
+	exynos_init_cpu(EXYNOS_PA_CHIPID);
+
+	/*
+	 * TODO:
+	 * Host virtual memory, device tree, heap is up.
+	 * Do necessary early stuff like iomapping devices
+	 * memory or boot time memory reservation here.
+	 */
+	return 0;
+
+#else
 	int rc;
 	u32 val;
 	struct vmm_devtree_node *node;
@@ -304,11 +325,45 @@ int __init arch_board_early_init(void)
 	}
 
 	return 0;
+#endif
 }
+
+/* porting mct timer and generic timer by kordo */
+#if 1
+static virtual_addr_t mct_timer_base;
+static u32 mct_clk_rate = 24000000;
+#endif
 
 int __init arch_clocksource_init(void)
 {
 	int rc;
+/* porting mct timer and generic timer by kordo */
+#if 1
+    struct vmm_devtree_node *node;
+
+    /* Map timer0 registers */
+    node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING "mct");
+	if (!node) {
+		rc = VMM_EFAIL;
+		goto skip_mct_timer_init;
+	}
+
+	rc = vmm_devtree_clock_frequency(node, &mct_clk_rate);
+	if (rc) {
+		goto skip_mct_timer_init;
+	}
+
+	if (!mct_timer_base) {
+		rc = vmm_devtree_regmap(node, &mct_timer_base, 0);
+		if (rc) {
+			return rc;
+		}
+	}
+
+	/* Initialize mct as clocksource */
+	rc = exynos4_clocksource_init(mct_timer_base, node->name, 300,
+			mct_clk_rate);
+#else
 
 	/* Initialize sp804 timer0 as clocksource */
 	rc = sp804_clocksource_init(v2m_sp804_base, 
@@ -317,6 +372,7 @@ int __init arch_clocksource_init(void)
 		vmm_printf("%s: sp804 clocksource init failed (error %d)\n", 
 			   __func__, rc);
 	}
+#endif	
 
 #if defined(CONFIG_ARM_GENERIC_TIMER)
 	/* Initialize generic timer as clock source */
@@ -327,7 +383,17 @@ int __init arch_clocksource_init(void)
 	}
 #endif
 
+/* porting mct timer and generic timer by kordo */
+#if 1
+	if (rc) {
+		return rc;
+	}
+skip_mct_timer_init:
+
+	return rc;
+#else
 	return VMM_OK;
+#endif	
 }
 
 int __cpuinit arch_clockchip_init(void)
@@ -335,6 +401,8 @@ int __cpuinit arch_clockchip_init(void)
 	int rc;
 	u32 cpu = vmm_smp_processor_id();
 
+/* porting mct timer and generic timer by kordo */
+#if 0
 	if (!cpu) {
 		/* Initialize sp804 timer1 as clockchip */
 		rc = sp804_clockchip_init(v2m_sp804_base + 0x20, 
@@ -353,6 +421,7 @@ int __cpuinit arch_clockchip_init(void)
 		vmm_printf("%s: local timer init failed (error %d)\n", 
 			   __func__, rc);
 	}
+#endif
 #endif
 
 #if defined(CONFIG_ARM_GENERIC_TIMER)
@@ -378,11 +447,21 @@ int __init arch_board_final_init(void)
 	/* All VMM API's are available here */
 	/* We can register a Board specific resource here */
 
+/* porting mct timer and generic timer by kordo */
+#if 1
+	/* Do Probing using device driver framework */
+	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
+			"sfrregion");
+	if (!node) {
+		return VMM_ENOTAVAIL;
+	}
+#else
 	/* Find simple-bus node */
 	node = vmm_devtree_find_compatible(NULL, NULL, "simple-bus");
 	if (!node) {
 		return VMM_ENODEV;
 	}
+#endif
 
 	/* Do probing using device driver framework */
 	rc = vmm_devdrv_probe(node);
@@ -390,6 +469,8 @@ int __init arch_board_final_init(void)
 		return rc;
 	}
 
+/* porting mct timer and generic timer by kordo */
+#if 0
 	/* Create VTEMU instace if available*/
 #if defined(CONFIG_VTEMU)
 	node = vmm_devtree_find_compatible(NULL, NULL, "arm,pl111");
@@ -400,6 +481,7 @@ int __init arch_board_final_init(void)
 	if (info) {
 		v2m_vt = vtemu_create(node->name, info, NULL);
 	}
+#endif
 #endif
 
 	return VMM_OK;

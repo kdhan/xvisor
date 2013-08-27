@@ -2,7 +2,7 @@
 # Automatically generated make config: don't edit
 # Project: Xvisor (eXtensible Versatile hypervISOR)
 # Version: 0.2.2
-# Tue Aug 27 15:42:35 2013
+# Tue Aug 27 16:15:29 2013
 #
 CONFIG_SMP=y
 CONFIG_ARCH_ARM=y
@@ -64,7 +64,7 @@ CONFIG_ARM_SCU=y
 CONFIG_VERSATILE_CLOCK=y
 CONFIG_VERSATILE_CLCD=y
 # CONFIG_OMAP is not set
-# CONFIG_SAMSUNG_MCT is not set
+CONFIG_SAMSUNG_MCT=y
 # CONFIG_SAMSUNG_MCT_LOCAL_TIMERS is not set
 # CONFIG_SUNXI is not set
 # CONFIG_FREESCALE_AVIC is not set
