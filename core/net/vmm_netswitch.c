@@ -96,7 +96,6 @@ do{									\
 
 static int vmm_netswitch_thread(void *param)
 {
-	u64 timeout;
 	struct dlist *l;
 	irq_flags_t flags;
 	struct vmm_netport *xfer_port;
@@ -111,17 +110,11 @@ static int vmm_netswitch_thread(void *param)
 	nsw = param;
 
 	while (1) {
-		/* Try to wait for xfer request with timeout 
-		 * NOTE: The timeout here is to ensure that netswitch thread
-		 * does not sleep endlessly.
-		 */
-		timeout = 20000000000ULL;
-		vmm_completion_wait_timeout(&nsw->rx_not_empty, &timeout);
-
-		/* Try to get xfer request from rx_list */
+		/* Try to wait for xfer request */
 		vmm_spin_lock_irqsave(&nsw->rx_list_lock, flags);
 		if (list_empty(&nsw->rx_list)) {
 			vmm_spin_unlock_irqrestore(&nsw->rx_list_lock, flags);
+			vmm_completion_wait(&nsw->rx_not_empty);
 			continue;
 		}
 		l = list_pop(&nsw->rx_list);
@@ -459,7 +452,11 @@ int vmm_netswitch_register(struct vmm_netswitch *nsw,
 	}
 
 	INIT_LIST_HEAD(&cd->head);
-	strcpy(cd->name, nsw->name);
+	if (strlcpy(cd->name, nsw->name, sizeof(cd->name)) >=
+	    sizeof(cd->name)) {
+		rc = VMM_EOVERFLOW;
+		goto fail_nsw_reg;
+	}
 	cd->dev = nsw->dev;
 	cd->priv = nsw;
 
@@ -482,8 +479,6 @@ int vmm_netswitch_register(struct vmm_netswitch *nsw,
 	return rc;
 
 fail_nsw_reg:
-	cd->dev = NULL;
-	cd->priv = NULL;
 	vmm_free(cd);
 ret:
 	return rc;
@@ -572,18 +567,25 @@ int __init vmm_netswitch_init(void)
 	}
 
 	INIT_LIST_HEAD(&c->head);
-	strcpy(c->name, VMM_NETSWITCH_CLASS_NAME);
+	if (strlcpy(c->name, VMM_NETSWITCH_CLASS_NAME, sizeof(c->name)) >=
+	    sizeof(c->name)) {
+		rc = VMM_EOVERFLOW;
+		goto free_class;
+	}
 	INIT_LIST_HEAD(&c->classdev_list);
 
 	rc = vmm_devdrv_register_class(c);
 	if (rc) {
 		vmm_printf("Failed to register %s class\n",
 			VMM_NETSWITCH_CLASS_NAME);
-		vmm_free(c);
-		return rc;
+		goto free_class;
 	}
 
 	return VMM_OK;
+
+free_class:
+	vmm_free(c);
+	return rc;
 }
 
 void __exit vmm_netswitch_exit(void)
