@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2012 Anup Patel.
+ * Copyright (c) 2012 Jean-Christophe Dubois.
  * All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -17,36 +17,41 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  * @file brd_defterm.c
- * @author Anup Patel (anup@brainfault.org)
+ * @author Jean-Christophe Dubois (jcd@tribudubois.net)
  * @brief default serial terminal
  */
 
 #include <vmm_error.h>
 #include <vmm_types.h>
 #include <vmm_compiler.h>
-#include <vmm_devtree.h>
 #include <vmm_host_aspace.h>
-#include <drv/pl011.h>
+#include <drv/samsung-uart.h>
+#include <vmm_devtree.h>
 
-static virtual_addr_t v2m_defterm_base;
-static u32 v2m_defterm_inclk;
-static u32 v2m_defterm_baud;
+#include <exynos/mach/map.h>
+
+#define	EXYNOS4_DEFAULT_UART_INCLK		24000000
+#define	EXYNOS4_DEFAULT_UART_BAUD		115200
+
+static virtual_addr_t exynos4_defterm_base;
+static u32 exynos4_defterm_inclk;
+static u32 exynos4_defterm_baud;
 
 int arch_defterm_putc(u8 ch)
 {
-	if (!pl011_lowlevel_can_putc(v2m_defterm_base)) {
+	if (!samsung_lowlevel_can_putc(exynos4_defterm_base)) {
 		return VMM_EFAIL;
 	}
-	pl011_lowlevel_putc(v2m_defterm_base, ch);
+	samsung_lowlevel_putc(exynos4_defterm_base, ch);
 	return VMM_OK;
 }
 
 int arch_defterm_getc(u8 * ch)
 {
-	if (!pl011_lowlevel_can_getc(v2m_defterm_base)) {
+	if (!samsung_lowlevel_can_getc(exynos4_defterm_base)) {
 		return VMM_EFAIL;
 	}
-	*ch = pl011_lowlevel_getc(v2m_defterm_base);
+	*ch = samsung_lowlevel_getc(exynos4_defterm_base);
 	return VMM_OK;
 }
 
@@ -54,40 +59,47 @@ int __init arch_defterm_init(void)
 {
 	int rc;
 	u32 *val;
-	const char *attr;
+	char *console_device = NULL;
 	struct vmm_devtree_node *node;
 
+	/* find the device used as console */
 	node = vmm_devtree_getnode(VMM_DEVTREE_PATH_SEPARATOR_STRING
 				   VMM_DEVTREE_CHOSEN_NODE_NAME);
 	if (!node) {
 		return VMM_ENODEV;
 	}
 
-	attr = vmm_devtree_attrval(node, VMM_DEVTREE_CONSOLE_ATTR_NAME);
-	if (!attr) {
+	console_device = 
+		vmm_devtree_attrval(node, VMM_DEVTREE_CONSOLE_ATTR_NAME);
+	if (!console_device) {
 		return VMM_ENODEV;
 	}
-   
-	node = vmm_devtree_getnode(attr);
+
+	/* find the device used as console */
+	node = vmm_devtree_getnode(console_device);
 	if (!node) {
 		return VMM_ENODEV;
 	}
 
-	rc = vmm_devtree_regmap(node, &v2m_defterm_base, 0);
+	/* map this console device */
+	rc = vmm_devtree_regmap(node, &exynos4_defterm_base, 0);
 	if (rc) {
 		return rc;
 	}
 
-	rc = vmm_devtree_clock_frequency(node, &v2m_defterm_inclk);
+	/* retrieve clock frequency */
+	rc = vmm_devtree_clock_frequency(node, &exynos4_defterm_inclk);
 	if (rc) {
 		return rc;
 	}
-
+	
+	/* retrieve baud rate */
 	val = vmm_devtree_attrval(node, "baudrate");
-	v2m_defterm_baud = (val) ? *val : 115200;
+	exynos4_defterm_baud = (val) ? *val : EXYNOS4_DEFAULT_UART_BAUD;
 
-	pl011_lowlevel_init(v2m_defterm_base,
-			    v2m_defterm_baud, 
-			    v2m_defterm_inclk);
+	/* initialize the console port */
+	samsung_lowlevel_init(exynos4_defterm_base,
+			      exynos4_defterm_baud, exynos4_defterm_inclk);
+
 	return VMM_OK;
 }

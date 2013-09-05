@@ -5,7 +5,7 @@
 
 / {
 	chosen {
-		console = &SERIAL0;
+		console = &SERIAL2;
 		rtcdev = &RTC0;
 		bootcmd = /* Copy guest0 device tree from templates */
 			  "devtree node copy /guests guest0 /templates/realview-pb-a8",

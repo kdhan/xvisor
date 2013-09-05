@@ -53,6 +53,8 @@ __gentimer_freq_next:
 __dist_gic_base:
 #ifdef VEXPRESS_A15
 	.word	0x2c001000
+#elif defined(ARNDALE)
+	.word	0x10481000
 #else
 	.word	0x00000000
 #endif
@@ -85,6 +87,8 @@ __nsacr_val_next:
 __cpu_gic_base:
 #ifdef VEXPRESS_A15
 	.word	0x2c002000
+#elif defined(ARNDALE)
+	.word	0x10482000
 #else
 	.word	0x00000000
 #endif
